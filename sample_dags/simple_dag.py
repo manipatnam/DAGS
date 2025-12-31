@@ -2,10 +2,11 @@
 ## Simple Data Processing DAG
 
 This is a simple DAG that demonstrates basic task dependencies using Airflow's
-TaskFlow API. It performs three sequential tasks:
+TaskFlow API. It performs four sequential tasks:
 1. Generate some sample data
 2. Process the data
-3. Print the results
+3. Calculate statistics on the processed data
+4. Print the results
 
 This DAG runs daily and shows how tasks can pass data between each other
 using the TaskFlow API's automatic XCom handling.
@@ -48,18 +49,39 @@ def simple_data_processing():
         return processed
 
     @task
-    def print_results(results: list[int]) -> None:
+    def calculate_statistics(processed_data: list[int]) -> dict[str, float]:
         """
-        Print the final results.
-        Takes a list of processed numbers and prints them.
+        Calculate statistics on the processed data.
+        Takes a list of integers and returns a dictionary with statistics.
+        """
+        stats = {
+            "max": max(processed_data),
+            "min": min(processed_data),
+            "average": sum(processed_data) / len(processed_data),
+            "count": len(processed_data),
+        }
+        print(f"Statistics: {stats}")
+        return stats
+
+    @task
+    def print_results(results: list[int], stats: dict[str, float]) -> None:
+        """
+        Print the final results and statistics.
+        Takes a list of processed numbers and statistics dictionary and prints them.
         """
         print(f"Final results: {results}")
         print(f"Sum of results: {sum(results)}")
+        print(f"Statistics summary:")
+        print(f"  - Maximum: {stats['max']}")
+        print(f"  - Minimum: {stats['min']}")
+        print(f"  - Average: {stats['average']:.2f}")
+        print(f"  - Count: {stats['count']}")
 
     # Define task dependencies
     data = generate_data()
     processed = process_data(data)
-    print_results(processed)
+    stats = calculate_statistics(processed)
+    print_results(processed, stats)
 
 
 # Instantiate the DAG
