@@ -52,6 +52,7 @@ def _read_xcom_during_parse() -> object:
             return getattr(row, "value", None)
     except Exception as e:  # noqa: BLE001 - this is test/diagnostic code
         # Return a string describing the failure so the DAG can still load.
+        print(f"PARSE_TIME_XCOM_READ_ERROR: {type(e).__name__}: {e}")
         return f"PARSE_TIME_XCOM_READ_ERROR: {type(e).__name__}: {e}"
 
 
