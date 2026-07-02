@@ -29,7 +29,22 @@ def main() -> None:
         sys.exit(1)
 
     dag_file = str(Path(sys.argv[1]).resolve())
-    bundle_path = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else Path("/opt/airflow/dags")
+    if len(sys.argv) > 2:
+        bundle_path = Path(sys.argv[2]).resolve()
+    else:
+        # No bundle root given: default to the file's own directory so
+        # BundleDagBag's file.relative_to(bundle_path) always succeeds.
+        # NOTE: for DAGs that import a shared package (e.g. saxo_common) from
+        # the bundle root, pass the REAL bundle root as arg 2 so it lands on
+        # sys.path — otherwise those imports fail and skew the timing.
+        bundle_path = Path(dag_file).parent
+
+    if not str(dag_file).startswith(str(bundle_path)):
+        print(f"ERROR: dag_file is not inside bundle_path.\n"
+              f"  dag_file    = {dag_file}\n"
+              f"  bundle_path = {bundle_path}\n"
+              f"Pass the bundle root as the 2nd arg, e.g. the git-sync repo root.")
+        sys.exit(2)
 
     print(f"dag_file    : {dag_file}")
     print(f"bundle_path : {bundle_path}")
