@@ -15,7 +15,7 @@ def dag_success_callback(context):
     In RE mode, this runs inside the dag-processor's forked process,
     where session access is forbidden.
     """
-    
+    print(f"[callback] dag_id: {context['dag_run'].dag_id}")
     with create_session() as session:
         xcoms = session.query(XCom).filter(XCom.dag_id == context["dag_run"].dag_id).all()
         print(f"[callback] xcoms: {xcoms}")
