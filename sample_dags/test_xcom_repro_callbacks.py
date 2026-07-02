@@ -23,14 +23,21 @@ def dag_success_callback(context):
         ti_list = ti_getter() if callable(ti_getter) else []
 
     print(f"[callback] DAG succeeded: {dag_run.dag_id}")
-    
+    print(f"[callback] task instance count: {len(ti_list)}")
+
     for ti in ti_list:
-        if ti.task_id == "mapped_task":
+        task_id = getattr(ti, "task_id", None)
+        map_index = getattr(ti, "map_index", None)
+        print(f"[callback] saw task_id={task_id!r}, map_index={map_index!r}")
+
+        # Keep exact match first, but allow prefixed variants for debugging
+        # across different runtime representations.
+        if task_id == "mapped_task" or str(task_id).startswith("mapped_task"):
             try:
-                val = ti.xcom_pull(task_ids="mapped_task", map_indexes=ti.map_index)
-                print(f"[callback] mapped_task[{ti.map_index}] xcom = {val}")
+                val = ti.xcom_pull(task_ids="mapped_task", map_indexes=map_index)
+                print(f"[callback] mapped_task[{map_index}] xcom = {val}")
             except Exception as e:
-                print(f"[callback] Error reading xcom: {e}")
+                print(f"[callback] Error reading xcom for task_id={task_id!r}: {e}")
 
 
 @task
