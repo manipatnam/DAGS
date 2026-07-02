@@ -1,24 +1,47 @@
 """
 Repro DAG for QA ForbiddenSessionUseError.
-Callback reads mapped XCom, which may trigger get_mapped_xcom_by_slice
-in the dag-processor's execution API during callback processing in RE mode.
+
+A DAG-level on_success_callback reads XComs produced by the run. It uses the
+Task SDK (ti.xcom_pull), which routes through the dag-processor's execution API
+(GetXCom / GetXComSequenceItem / GetXComSequenceSlice) instead of a metadata-DB
+session -- so it does NOT raise ForbiddenSessionUseError in RE mode.
+
+DAG-level callbacks run inside the dag-processor's forked process; their output
+lands in the dag-processor per-file log
+(/usr/local/airflow/logs/dag_processor/<date>/dags/<file>.py.log), NOT in the
+task logs shown in the Airflow UI.
 """
 from __future__ import annotations
+
 from datetime import datetime
+
 from airflow.sdk import DAG, task
-from airflow.models.xcom import XCom
-from airflow.utils.session import create_session
+
 
 def dag_success_callback(context):
-    """
-    Callback that reads mapped XCom from the completed DAG run.
-    In RE mode, this runs inside the dag-processor's forked process,
-    where session access is forbidden.
-    """
-    print(f"[callback] dag_id: {context['dag_run'].dag_id}")
-    with create_session() as session:
-        xcoms = session.query(XCom).filter(XCom.dag_id == context["dag_run"].dag_id).all()
-        print(f"[callback] xcoms: {xcoms}")
+    """Pull XComs produced by this run from inside the DAG success callback."""
+    ti = context.get("ti")
+    if ti is None:
+        # DAG-level callbacks only get "ti" when the server includes last_ti.
+        print(f"[callback] no 'ti' in context; keys={list(context)}")
+        return
+
+    # Single, non-mapped XCom -> GetXCom
+    single = ti.xcom_pull(task_ids="push_value")
+    print(f"[callback] push_value xcom = {single}")
+
+    # One specific mapped index -> GetXComSequenceItem
+    one_mapped = ti.xcom_pull(task_ids="mapped_task", map_indexes=0)
+    print(f"[callback] mapped_task[0] xcom = {one_mapped}")
+
+    # Whole mapped sequence -> GetXComSequenceSlice (get_mapped_xcom_by_slice)
+    all_mapped = ti.xcom_pull(task_ids="mapped_task", map_indexes=None)
+    print(f"[callback] mapped_task[*] xcoms = {all_mapped}")
+
+
+@task
+def push_value():
+    return "hello-xcom"
 
 
 @task
@@ -45,6 +68,7 @@ with DAG(
     on_success_callback=dag_success_callback,
     tags=["repro", "qa", "mapped-xcom"],
 ) as dag:
+    push_value()
     items = generate_items()
     mapped_results = mapped_task.expand(item=items)
     reduce_results(mapped_results)
