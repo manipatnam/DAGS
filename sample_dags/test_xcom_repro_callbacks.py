@@ -14,15 +14,7 @@ def dag_success_callback(context):
     In RE mode, this runs inside the dag-processor's forked process,
     where session access is forbidden.
     """
-    dag_run = context["dag_run"]
-    # In RE callback execution, dag_run can be a lightweight model that has
-    # `task_instances` but not ORM methods like `get_task_instances()`.
-    ti_list = getattr(dag_run, "task_instances", None)
-    if ti_list is None:
-        ti_getter = getattr(dag_run, "get_task_instances", None)
-        ti_list = ti_getter() if callable(ti_getter) else []
-
-    print(f"[callback] DAG succeeded: {dag_run.dag_id}")
+    ti_list = context["ti"]
     print(f"[callback] task instance count: {len(ti_list)}")
 
     for ti in ti_list:
