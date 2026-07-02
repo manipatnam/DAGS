@@ -38,7 +38,7 @@ def reduce_results(results: list[int]):
 
 
 with DAG(
-    dag_id="repro_qa_forbidden_session_v2",
+    dag_id="test_xcom_repro_callbacks_session",
     start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
