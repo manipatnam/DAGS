@@ -13,10 +13,10 @@ from pendulum import datetime
 
 DAG_ID = "test_dag_variable_get"
 VARIABLE_KEY = "test_parse_time_variable"
-DEFAULT_VALUE = "default_from_parse_time"
+# DEFAULT_VALUE = "default_from_parse_time"
 
 # Evaluated at import time (i.e., while the dag-processor parses this file).
-PARSE_TIME_VARIABLE_VALUE = Variable.get(VARIABLE_KEY, default=DEFAULT_VALUE)
+PARSE_TIME_VARIABLE_VALUE = Variable.get(VARIABLE_KEY)#, default=DEFAULT_VALUE)
 
 
 @dag(
